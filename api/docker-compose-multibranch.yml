@@ -1,0 +1,10 @@
+version: "3.4"
+
+services:
+  app:
+    container_name: app-${SUFFIX}
+    build:
+      context: .
+      dockerfile: Utils/Jenkins/Dockerfile
+    environment:
+      - BUILD_NUMBER=${BUILD_NUMBER}
