@@ -1,0 +1,84 @@
+#!/usr/bin/env groovy
+
+@Library("github.mb-internal.com:Eng-DevOps/sre-jenkins-libraries") _
+
+Map pipelineData = [
+    project: "api_qa",
+    displayName: "API QA",
+    pipelines: []
+]
+
+[
+    "comprehensive_stage_regression": [
+        env: ["stage"]
+    ]
+].each { appName, appData ->
+    appData.env.each { appEnv ->
+        pipelineData.pipelines.add([
+            env: appEnv,
+            name: appName,
+            params: [
+                [name: "BRANCH_NAME", class: "stringParam", defaultValue: "main", description: "Application branch to run"]
+            ],
+            repo: "git@github.com:Malwarebytes/licensing-lusi_qa.git",
+            template: "simple",
+            timeout: [
+                time: 240,
+                unit: "MINUTES"
+            ],
+            stages: [
+                "Health Check": [
+                    type: "BuildJob",
+                    jobName: "lusi_qa/lusi_healthcheck-stage",
+                    propagate: true,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "main"]],
+                    wait: true
+                ],
+                "AzDo Job Trigger": [
+                    type: "BuildJob",
+                    jobName: "lusi_qa/azdo_trigger",
+                    propagate: false,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "main"]],
+                    wait: false
+                ],
+                "MyAccount-API": [
+                    type: "BuildJob",
+                    jobName: "idms/api-tests",
+                    propagate: false,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "master"]],
+                    wait: false
+                ],
+                "MyAccount-Cypress": [
+                    type: "BuildJob",
+                    jobName: "idms/cypress-smoke-tests",
+                    propagate: false,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "master"]],
+                    wait: false
+                ],
+                "VPN": [
+                    type: "BuildJob",
+                    jobName: "lusi_qa/vpn-stage",
+                    propagate: false,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "master"]],
+                    wait: false
+                ],
+                "LUSI": [
+                    type: "BuildJob",
+                    jobName: "lusi_qa/lusi-stage",
+                    propagate: false,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "main"]],
+                    wait: true
+                ],
+                "Keystone": [
+                    type: "BuildJob",
+                    jobName: "lusi_qa/keystone-stage",
+                    propagate: false,
+                    parameters: [[$class: "StringParameterValue", name: "BRANCH_NAME", value: "master"]],
+                    wait: true
+                ]
+            ]
+        ])
+    }
+}
+
+seed(pipelineData)

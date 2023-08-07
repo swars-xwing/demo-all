@@ -1,0 +1,41 @@
+#!/usr/bin/env groovy
+
+@Library("github.mb-internal.com:Eng-DevOps/sre-jenkins-libraries") _
+
+Map pipelineData = [
+    project: "api_qa",
+    displayName: "API QA",
+    pipelines: []
+]
+
+[
+    "lusi": [
+        env: ["dev", "qa", "stage"]
+    ]
+].each { appName, appData ->
+    appData.env.each { appEnv ->
+        pipelineData.pipelines.add([
+            env: appEnv,
+            name: "${appName}-${appEnv}",
+            params: [
+                [name: "BRANCH_NAME", class: "stringParam", defaultValue: "main", description: "Application branch to run"]
+            ],
+            repo: "git@github.com:Malwarebytes/licensing-lusi_qa.git",
+            template: "simple",
+            timeout: [
+                time: 240,
+                unit: "MINUTES"
+            ],
+            stages: [
+                "LUSI Regression": [
+                    type: "LibraryUnitTest",
+                    workdir: "/usr/src/app/",
+                    testOutputPath: "Tests/.TestResults/",
+                    cmdArgs: "--build-arg APPENV=${appEnv}  --build-arg TEST='Tests/'"
+                ]
+            ]
+        ])
+    }
+}
+
+seed(pipelineData)
